@@ -7,8 +7,7 @@ volatile unsigned char sample_list[BUFFER_SIZE];
 volatile bool can_play = false; // can only be true when we have received 1024 bytes (1024 / 64 = 16 chunks)
 volatile int total_received = 0;  // per 1024-bytes chunk
 volatile bool has_finished = true;
-bool should_disconnect = false;
-bool client_ready = false;
+int old_received = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -24,77 +23,52 @@ void setup() {
 }
 
 void loop() {
-//  Serial.println(has_finished);
+  //  Serial.println(has_finished);
   if (Serial1.available()) {
     if (Serial1.find("+IPD,")) {
-      delay(500);
+      delay(50);
       int connectionId = Serial1.read() - 48; // read() function returns
       // ASCII decimal value and 0 (the first decimal number) starts at 48
-      
-//      if(Serial1.indexOf("READY") != -1)
-//      {
-//        client_ready = true;
-//        Serial1.find("READY");
-//      }
-//      else
-
-      String status = "";
-      for(int i=0; i<5; i++)
-      {
-        status += (char)Serial1.read();
-      }
-      
-      if(status.indexOf("QUITS") != -1)
-      {
-        should_disconnect = true;
-      }
 
       // if there is anything left in the buffer, it must be some music
-      while(Serial1.available())
+      Serial1.find(":");
+      while (Serial1.available())
       {
-        sample_list[total_received % BUFFER_SIZE] = Serial1.read();
-        total_received++;
+        sample_list[total_received++] = Serial1.read();
       }
 
-      if(!should_disconnect)
+      if (total_received != old_received)
       {
-        if(can_play)
-        {
-          has_finished = false;
-          can_play = false;
-          total_received = 0;
-          startPlayback(sample_list, BUFFER_SIZE, &has_finished);
-        }
-        else
-        if(has_finished)
-        {
-          if(total_received == BUFFER_SIZE)
-          {
-            can_play = true;
-          }
-          else
-          {
-            String request = "SENDC\r\n";
-            String cipSend = "AT+CIPSEND=";
-            cipSend += connectionId;
-            cipSend += ",";
-            cipSend += request.length();
-            cipSend += "\r\n";
-            sendData(cipSend, 100, DEBUG);
-            sendData(request, 150, DEBUG);
-          }
-        }
-      }
-      else
-      {
-        String closeCommand = "AT+CIPCLOSE=";
-        closeCommand += connectionId; // append connection id
-        closeCommand += "\r\n";
-        sendData(closeCommand, 300, DEBUG);
-        should_disconnect = false;
+        Serial.println(total_received);
+        old_received = total_received;
       }
 
-      
+      if (total_received >= BUFFER_SIZE)
+      {
+        can_play = true;
+      }
+
+      if (can_play)
+      {
+        has_finished = false;
+        can_play = false;
+        total_received = 0;
+        Serial.println("Play some music now");
+        startPlayback(sample_list, BUFFER_SIZE, &has_finished);
+      }
+//      else
+      if (has_finished)
+      {
+        String request = "SENDC\r\n";
+        String cipSend = "AT+CIPSEND=";
+        cipSend += connectionId;
+        cipSend += ",";
+        cipSend += request.length();
+        cipSend += "\r\n";
+        Serial1.print(cipSend);
+        delay(25);
+        Serial1.print(request);
+      }
     }
   }
 }
