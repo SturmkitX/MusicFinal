@@ -29,7 +29,7 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 
-#define SAMPLE_RATE 8000
+#define SAMPLE_RATE 4000
 
 #if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
@@ -68,14 +68,12 @@ volatile unsigned char *sounddata_data=0;
 int sounddata_length=0;
 volatile uint16_t sample;
 byte lastSample;
-volatile bool *sounddata_finished;
 
 // This is called at 8000 Hz to load the next sample.
 ISR(TIMER1_COMPA_vect) {
   if (sample >= sounddata_length) {
     if (sample == sounddata_length + lastSample) {
       stopPlayback();
-      *sounddata_finished = true;
     }
     else {
       // Ramp down to zero to reduce the click at the end of playback.
@@ -89,11 +87,10 @@ ISR(TIMER1_COMPA_vect) {
   ++sample;
 }
 
-void startPlayback(volatile unsigned char *data, int length, volatile bool *has_finished)
+void startPlayback(volatile unsigned char *data, int length)
 {
   sounddata_data = data;
   sounddata_length = length;
-  sounddata_finished = has_finished;
 
   pinMode(speakerPin, OUTPUT);
   

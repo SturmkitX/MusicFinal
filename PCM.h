@@ -53,7 +53,7 @@
 extern "C" {
 #endif
 
-void startPlayback(volatile unsigned char *data, int length, volatile bool *has_finished);
+void startPlayback(volatile unsigned char *data, int length);
 void stopPlayback();
 
 #ifdef __cplusplus
